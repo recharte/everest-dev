@@ -228,7 +228,7 @@ for object in objects:
   if object.get('kind', None) == 'Deployment' and object.get('metadata', None).get('name', None) == 'everest-operator-controller-manager':
     for container in object['spec']['template']['spec']['containers']:
       if container.get('name') == 'manager':
-        container['env'].append({'name': 'WATCH_NAMESPACES', 'value': 'dev'})
+        container['env'].append({'name': 'WATCH_NAMESPACES', 'value': namespaces_string})
 everest_operator_yaml = encode_yaml_stream(objects)
 k8s_yaml(everest_operator_yaml)
 k8s_resource(
