@@ -24,26 +24,46 @@ Build and runtime logs can be easily accessed using tilt's web UI.
 
 ## Set up the environment
 
-1. Create a local k8s cluster with a local registry
+### 1. Set up k8s & registry   
+#### Option A: Local  
 ```sh
 k3d cluster create everest-dev --registry-create k3d-registry
+```  
+#### Option B: Remote (GKE)  
+1. Setup your default gcloud project, e.g.  
+```sh
+export CLOUDSDK_CORE_PROJECT=percona-everest
+```  
+2. Create GKE cluster  
+```sh
+gcloud container clusters create <NAME> --cluster-version 1.27 --preemptible --machine-type n1-standard-4  --num-nodes=3 --zone=europe-west1-c --labels delete-cluster-after-hours=12 --no-enable-autoupgrade
+```  
+3. Create Artifacts registry accodring to [instructions](https://cloud.google.com/artifact-registry/docs/docker/store-docker-container-images#create)  
+4. Configure access  
+```sh
+gcloud auth configure-docker <REGISTRY_REGION>-docker.pkg.dev 
 ```
+⚠️ To avoid extra costs do not forget to:
+- Destroy external cluster when not used
+- Cleanup the registry periodically since tilt pushes a new image each time something is changed in the project. 
 
-2. Set the paths to the local git repos for [everest-operator](https://github.com/percona/everest-operator), [percona-everest-backend](https://github.com/percona/percona-everest-backend) and [percona-everest-frontend](https://github.com/percona/percona-everest-frontend)
+
+### 2. Run tilt
+1. Set the paths to the local git repos for [everest-operator](https://github.com/percona/everest-operator), [percona-everest-backend](https://github.com/percona/percona-everest-backend) and [percona-everest-frontend](https://github.com/percona/percona-everest-frontend)
 ```sh
 export EVEREST_OPERATOR_DIR=<Path to operator repo>
 export EVEREST_BACKEND_DIR=<Path to backend repo>
 export EVEREST_FRONTEND_DIR=<Path to frontend repo>
 ```
 
-3. (Optional) If you want to test a specific version of a given DB operator you can set the following environment variables
+2. (Optional) If you want to test a specific version of a given DB operator you can set the following environment variables
 ```sh
 export PXC_OPERATOR_VERSION=1.12.0
 export PSMDB_OPERATOR_VERSION=1.15.0
 export PG_OPERATOR_VERSION=2.2.0
 ```
 
-4. Run tilt
+3. Run tilt
 ```sh
 tilt up
 ```
