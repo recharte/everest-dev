@@ -9,6 +9,12 @@ print('Using PSMDB operator version: %s' % psmdb_operator_version)
 pg_operator_version = os.getenv('PG_OPERATOR_VERSION', '2.2.0')
 print('Using PG operator version: %s' % pg_operator_version)
 
+# External resources set up
+# uncomment the settings below and insert your k8s context & registry names
+# to get your current context name run `kubectl config view`
+#allow_k8s_contexts("gke_percona-everest_europe-west1-c_everest-dev")
+#default_registry("us-central1-docker.pkg.dev/percona-everest/quickstart-docker-repo")
+
 # Check for required env vars
 backend_dir = os.getenv('EVEREST_BACKEND_DIR')
 if not backend_dir:

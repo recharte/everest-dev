@@ -41,8 +41,10 @@ gcloud container clusters create <NAME> --cluster-version 1.27 --preemptible --m
 3. Create Artifacts registry accodring to [instructions](https://cloud.google.com/artifact-registry/docs/docker/store-docker-container-images#create)  
 4. Configure access  
 ```sh
-gcloud auth configure-docker <REGISTRY_REGION>-docker.pkg.dev 
+gcloud auth configure-docker <REGISTRY_REGION>-docker.pkg.dev
 ```
+5. Uncomment and edit `allow_k8s_contexts` and `default_registry` in the Tiltfile
+
 ⚠️ To avoid extra costs do not forget to:
 - Destroy external cluster when not used
 - Cleanup the registry periodically since tilt pushes a new image each time something is changed in the project. 
