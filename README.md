@@ -34,6 +34,7 @@ k3d cluster create everest-dev --registry-create k3d-registry
 export EVEREST_OPERATOR_DIR=<Path to operator repo>
 export EVEREST_BACKEND_DIR=<Path to backend repo>
 export EVEREST_FRONTEND_DIR=<Path to frontend repo>
+export EVEREST_CLI_DIR=<Path to cli repo>
 ```
 
 3. (Optional) If you want to test a specific version of a given DB operator you can set the following environment variables

@@ -1,6 +1,7 @@
 # Vars
 everest_namespace = 'percona-everest'
-namespaces_string = os.getenv('NAMESPACES', 'my-special-place,the-dark-side,percona-everest')
+everest_monitoring_namespace = 'percona-everest-monitoring'
+namespaces_string = os.getenv('NAMESPACES', 'my-special-place,the-dark-side')
 print('Using namespaces: %s' % namespaces_string)
 pxc_operator_version = os.getenv('PXC_OPERATOR_VERSION', '1.13.0')
 print('Using PXC operator version: %s' % pxc_operator_version)
@@ -26,6 +27,14 @@ if not os.path.exists(frontend_dir):
   fail('Frontend dir does not exist: %s' % frontend_dir)
 print('Using frontend dir: %s' % frontend_dir)
 
+cli_dir = os.getenv('EVEREST_CLI_DIR')
+if not cli_dir:
+  fail('EVEREST_CLI_DIR must be set')
+cli_dir = os.path.abspath(cli_dir)
+if not os.path.exists(cli_dir):
+  fail('cli dir does not exist: %s' % cli_dir)
+print('Using cli dir: %s' % cli_dir)
+
 operator_dir = os.getenv('EVEREST_OPERATOR_DIR')
 if not operator_dir:
   fail('EVEREST_OPERATOR_DIR must be set')
@@ -42,6 +51,13 @@ local('make -C %s init' % (frontend_dir), quiet=True)
 
 # Create namespaces
 load('ext://namespace', 'namespace_create', 'namespace_inject')
+namespace_create(everest_namespace)
+k8s_resource(
+  objects=[
+    '%s:namespace' % everest_namespace
+  ],
+  new_name='everest-namespace',
+)
 namespaces = namespaces_string.split(',')
 for namespace in namespaces:
   namespace_create(namespace)
@@ -50,18 +66,6 @@ k8s_resource(
     '%s:namespace' % namespace for namespace in namespaces
   ],
   new_name='namespaces',
-)
-
-load('ext://configmap', 'configmap_from_dict')
-k8s_yaml(configmap_from_dict('everest-configuration', everest_namespace, inputs={'namespaces': namespaces_string}))
-k8s_resource(
-  objects=[
-    'everest-configuration:configmap'
-  ],
-  resource_deps = [
-    'namespaces',
-  ],
-  new_name='everest-config',
 )
 
 
@@ -188,6 +192,95 @@ for namespace in namespaces:
   )
 
 ################################
+### Install monitoring stack ###
+################################
+
+namespace_create(everest_monitoring_namespace)
+k8s_resource(
+  objects=[
+    '%s:namespace' % everest_monitoring_namespace
+  ],
+  new_name='everest-monitoring-namespace',
+  labels=['monitoring']
+)
+
+load('ext://helm_remote', 'helm_remote')
+helm_remote('victoria-metrics-operator',
+  repo_name='vm',
+  repo_url='https://victoriametrics.github.io/helm-charts/',
+  namespace=everest_monitoring_namespace,
+)
+k8s_yaml(namespace_inject('%s/data/crds/victoriametrics/kube-state-metrics.yaml' % cli_dir, everest_monitoring_namespace))
+k8s_yaml(namespace_inject('%s/data/crds/victoriametrics/crs/vmagent_rbac_account.yaml' % cli_dir, everest_monitoring_namespace))
+k8s_yaml(namespace_inject('%s/data/crds/victoriametrics/crs/vmagent_rbac_role.yaml' % cli_dir, everest_monitoring_namespace))
+k8s_yaml(namespace_inject('%s/data/crds/victoriametrics/crs/vmagent_rbac_role_binding.yaml' % cli_dir, everest_monitoring_namespace))
+k8s_yaml(namespace_inject('%s/data/crds/victoriametrics/crs/vmnodescrape-cadvisor.yaml' % cli_dir, everest_monitoring_namespace))
+k8s_yaml(namespace_inject('%s/data/crds/victoriametrics/crs/vmnodescrape-kubelet.yaml' % cli_dir, everest_monitoring_namespace))
+k8s_yaml(namespace_inject('%s/data/crds/victoriametrics/crs/vmpodscrape.yaml' % cli_dir, everest_monitoring_namespace))
+k8s_yaml(namespace_inject('%s/data/crds/victoriametrics/kube-state-metrics/cluster-role-binding.yaml' % cli_dir, everest_monitoring_namespace))
+k8s_yaml(namespace_inject('%s/data/crds/victoriametrics/kube-state-metrics/cluster-role.yaml' % cli_dir, everest_monitoring_namespace))
+k8s_yaml(namespace_inject('%s/data/crds/victoriametrics/kube-state-metrics/configmap.yaml' % cli_dir, everest_monitoring_namespace))
+k8s_yaml(namespace_inject('%s/data/crds/victoriametrics/kube-state-metrics/deployment.yaml' % cli_dir, everest_monitoring_namespace))
+k8s_yaml(namespace_inject('%s/data/crds/victoriametrics/kube-state-metrics/service-account.yaml' % cli_dir, everest_monitoring_namespace))
+k8s_yaml(namespace_inject('%s/data/crds/victoriametrics/kube-state-metrics/service.yaml' % cli_dir, everest_monitoring_namespace))
+
+k8s_resource(
+  workload='victoria-metrics-operator',
+  resource_deps = [
+    'everest-monitoring-namespace',
+  ],
+  new_name='vm-operator',
+  labels=['monitoring']
+)
+k8s_resource(
+  workload='kube-state-metrics',
+  resource_deps = [
+    'everest-monitoring-namespace',
+  ],
+  new_name='kube-state-metrics',
+  labels=['monitoring']
+)
+k8s_resource(
+  objects=[
+    'vmagents.operator.victoriametrics.com:customresourcedefinition:percona-everest-monitoring',
+    'vmalertmanagerconfigs.operator.victoriametrics.com:customresourcedefinition:percona-everest-monitoring',
+    'vmalertmanagers.operator.victoriametrics.com:customresourcedefinition:percona-everest-monitoring',
+    'vmalerts.operator.victoriametrics.com:customresourcedefinition:percona-everest-monitoring',
+    'vmauths.operator.victoriametrics.com:customresourcedefinition:percona-everest-monitoring',
+    'vmclusters.operator.victoriametrics.com:customresourcedefinition:percona-everest-monitoring',
+    'vmnodescrapes.operator.victoriametrics.com:customresourcedefinition:percona-everest-monitoring',
+    'vmpodscrapes.operator.victoriametrics.com:customresourcedefinition:percona-everest-monitoring',
+    'vmprobes.operator.victoriametrics.com:customresourcedefinition:percona-everest-monitoring',
+    'vmrules.operator.victoriametrics.com:customresourcedefinition:percona-everest-monitoring',
+    'vmservicescrapes.operator.victoriametrics.com:customresourcedefinition:percona-everest-monitoring',
+    'vmsingles.operator.victoriametrics.com:customresourcedefinition:percona-everest-monitoring',
+    'vmstaticscrapes.operator.victoriametrics.com:customresourcedefinition:percona-everest-monitoring',
+    'vmusers.operator.victoriametrics.com:customresourcedefinition:percona-everest-monitoring',
+    'victoria-metrics-operator:serviceaccount',
+    'vmagent:serviceaccount',
+    'kube-state-metrics:serviceaccount',
+    'victoria-metrics-operator:role',
+    'victoria-metrics-operator:clusterrole',
+    'vmagent:clusterrole',
+    'kube-state-metrics:clusterrole',
+    'victoria-metrics-operator:rolebinding',
+    'victoria-metrics-operator:clusterrolebinding',
+    'vmagent:clusterrolebinding',
+    'kube-state-metrics:clusterrolebinding',
+    'customresource-config-ksm:configmap',
+    'kube-state-metrics:vmservicescrape',
+    'pmm-vm-cadvisor-metrics:vmnodescrape',
+    'pmm-vm-kubelet-metrics:vmnodescrape',
+    'pmm-vm-pod-scrape:vmpodscrape',
+  ],
+  resource_deps = [
+    'everest-monitoring-namespace',
+  ],
+  new_name='monitoring-stack',
+  labels=['monitoring']
+)
+
+################################
 ####### Everest operator #######
 ################################
 
@@ -222,18 +315,21 @@ docker_build_with_restart('perconalab/everest-operator',
 
 # Apply Everest operator manifests
 everest_operator_yaml=namespace_inject(kustomize('%s/config/default' % operator_dir, kustomize_bin='%s/bin/kustomize' % operator_dir), everest_namespace)
-# Inject WATCH_NAMESPACES environment variable
+# Inject namespace environment variables
 objects = decode_yaml_stream(everest_operator_yaml)
 for object in objects:
   if object.get('kind', None) == 'Deployment' and object.get('metadata', None).get('name', None) == 'everest-operator-controller-manager':
     for container in object['spec']['template']['spec']['containers']:
       if container.get('name') == 'manager':
-        container['env'].append({'name': 'WATCH_NAMESPACES', 'value': namespaces_string})
+        container['env'].append({'name': 'SYSTEM_NAMESPACE', 'value': everest_namespace})
+        container['env'].append({'name': 'MONITORING_NAMESPACE', 'value': everest_monitoring_namespace})
+        container['env'].append({'name': 'DB_NAMESPACES', 'value': namespaces_string})
 everest_operator_yaml = encode_yaml_stream(objects)
 k8s_yaml(everest_operator_yaml)
 k8s_resource(
   workload='everest-operator-controller-manager',
   objects=[
+    # FIXME
     'everest-operator-system:namespace',
     'backupstorages.everest.percona.com:customresourcedefinition',
     'databaseclusterbackups.everest.percona.com:customresourcedefinition',
