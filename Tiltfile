@@ -1,6 +1,6 @@
 # Vars
-everest_namespace = 'percona-everest'
-everest_monitoring_namespace = 'percona-everest-monitoring'
+everest_namespace = 'everest-system'
+everest_monitoring_namespace = 'everest-monitoring'
 namespaces_string = os.getenv('NAMESPACES', 'my-special-place,the-dark-side')
 print('Using namespaces: %s' % namespaces_string)
 pxc_operator_version = os.getenv('PXC_OPERATOR_VERSION', '1.13.0')
