@@ -7,7 +7,7 @@ pxc_operator_version = os.getenv('PXC_OPERATOR_VERSION', '1.13.0')
 print('Using PXC operator version: %s' % pxc_operator_version)
 psmdb_operator_version = os.getenv('PSMDB_OPERATOR_VERSION', '1.15.0')
 print('Using PSMDB operator version: %s' % psmdb_operator_version)
-pg_operator_version = os.getenv('PG_OPERATOR_VERSION', '2.2.0')
+pg_operator_version = os.getenv('PG_OPERATOR_VERSION', '2.3.1')
 print('Using PG operator version: %s' % pg_operator_version)
 
 # Check for required env vars
