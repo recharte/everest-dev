@@ -63,7 +63,7 @@ export EVEREST_CLI_DIR=<Path to cli repo>
 ```sh
 export PXC_OPERATOR_VERSION=1.12.0
 export PSMDB_OPERATOR_VERSION=1.15.0
-export PG_OPERATOR_VERSION=2.2.0
+export PG_OPERATOR_VERSION=2.3.1
 ```
 
 3. Run tilt
