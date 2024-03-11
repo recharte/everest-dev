@@ -1,4 +1,12 @@
-# everest-dev
+# everest-dev (Archived)
+
+Note: This repository has been archived and its functionality has been merged into a consolidated repository.
+
+For the latest updates and features, please visit the new repository:
+
+[Everest](https://github.com/percona/everest)
+
+#
 
 This repository holds the configuration files for creating a development
 environment for everest.
